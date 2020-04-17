@@ -291,11 +291,42 @@ public class Mint {
 
         try? packageCheckoutPath.delete()
 
-        let cloneCommand = "git clone --depth 1 -b \(package.version) \(package.gitPath) \(package.repoPath)"
-        try runPackageCommand(name: "Cloning \(package.namedVersion)",
-                              command: cloneCommand,
-                              directory: checkoutPath,
-                              error: .cloneError(package))
+        switch package.location {
+        case .git, .github:
+            //        let cloneCommand = "git clone --depth 1 -b \(package.version) \(package.gitPath) \(package.repoPath)"
+            let cloneCommand: String
+            switch package.revision {
+            case .branch(let name), .tag(let name):
+                cloneCommand = "git clone --depth 1 -b \(name) \(package.gitPath) \(package.repoPath)"
+            case .commit(let name):
+                cloneCommand = "git clone \(package.gitPath) \(package.repoPath) ; cd \(package.repoPath) ; git checkout \(name) ; cd -"
+            case .unknown(_), .none:
+                fatalError()
+            }
+
+            try runPackageCommand(name: "Cloning \(package.namedVersion)",
+                                  command: cloneCommand,
+                                  directory: checkoutPath,
+                                  error: .cloneError(package))
+        case .localGit(path: let path):
+            let cloneCommand: String
+            switch package.revision {
+            case .branch(let name), .tag(let name):
+                cloneCommand = "git clone --depth 1 -b \(name) -l \(path) \(package.repoPath)"
+            case .commit(let name):
+                cloneCommand = "git clone -l \(path) \(package.repoPath) ; cd \(package.repoPath) ; git checkout \(name) ; cd -"
+            case .unknown, .none:
+                fatalError()
+            }
+
+            try runPackageCommand(name: "Cloning \(package.namedVersion)",
+                command: cloneCommand,
+                directory: checkoutPath,
+                error: .cloneError(package))
+        case .unknown:
+            fatalError()
+        }
+
 
         try runPackageCommand(name: "Resolving package",
                               command: "swift package resolve",
@@ -435,7 +466,8 @@ public class Mint {
 
     public func bootstrap(link: Bool = false) throws {
 
-        let mintFile = try Mintfile(path: mintFilePath)
+//        let mintFile = try Mintfile(path: mintFilePath)
+        let mintFile = try MintfileYAML(path: mintFilePath)
 
         guard !mintFile.packages.isEmpty else {
             standardOut <<< "🌱  Mintfile is empty"

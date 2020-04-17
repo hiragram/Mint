@@ -1,7 +1,11 @@
 import Foundation
 import PathKit
 
-public class PackageReference {
+public class PackageReference: CustomStringConvertible {
+    public var description: String {
+        "\(repo)@\(version)"
+    }
+
     public var location: Location
     public var revision: Revision?
 
@@ -18,11 +22,12 @@ public class PackageReference {
 
         case github(repo: String)
         case git(location: String)
+        case localGit(path: String)
         case unknown
 
         var string: String {
             switch self {
-            case .github(repo: let name), .git(location: let name):
+            case .github(repo: let name), .git(location: let name), .localGit(path: let name):
                 return name
             case .unknown:
                 fatalError()
@@ -31,17 +36,15 @@ public class PackageReference {
     }
 
     public enum Revision {
-        case version(major: UInt, minor: UInt, patch: UInt)
         case tag(String)
         case branch(String)
+        case commit(String)
         case unknown(String?)
 
         var string: String {
             switch self {
-            case .branch(let name), .tag(let name):
+            case .branch(let name), .tag(let name), .commit(let name):
                 return name
-            case .version(major: let major, minor: let minor, patch: let patch):
-                return "\(major).\(minor).\(patch)"
             case .unknown(let text):
                 return text ?? ""
             }
@@ -101,6 +104,62 @@ public class PackageReference {
             location = { fatalError() }()
             revision = { fatalError() }()
         }
+        self.init(location: location, revision: revision)
+    }
+
+    public convenience init(yamlEntry: [String: Any]) {
+        let locationAndRevisionKeys: [String: [String]] = [
+            "github": [
+                "tag", "branch", "commit",
+            ],
+            "git": [
+                "tag", "branch", "commit",
+            ],
+        ]
+
+        // Make sure only one location key is contained.
+        let locationKeys = yamlEntry.keys
+            .filter { locationAndRevisionKeys.keys.contains($0) }
+
+        guard locationKeys.count == 1 else {
+            fatalError("include exact one location key.")
+        }
+
+        let locationKey = locationKeys.first!
+
+        let revisionKeys = yamlEntry.keys
+            .filter { locationAndRevisionKeys[locationKey]!.contains($0) }
+
+        guard revisionKeys.count == 1 else {
+            fatalError("can include one revision key")
+        }
+
+        let revisionKey = revisionKeys.first!
+
+        let location: Location
+        let locationValue = yamlEntry[locationKey] as! String
+        switch locationKey {
+        case "github":
+            location = .github(repo: locationValue)
+        case "git":
+            location = .git(location: locationValue)
+        default:
+            location = .unknown
+        }
+
+        let revision: Revision
+        let revisionValue = yamlEntry[revisionKey] as! String
+        switch revisionKey {
+        case "tag":
+            revision = .tag(revisionValue)
+        case "branch":
+            revision = .branch(revisionValue)
+        case "commit":
+            revision = .commit(revisionValue)
+        default:
+            revision = .unknown(revisionValue)
+        }
+
         self.init(location: location, revision: revision)
     }
 
