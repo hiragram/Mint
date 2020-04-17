@@ -12,7 +12,7 @@ let package = Package(
         .package(url: "https://github.com/kylef/PathKit.git", from: "1.0.0"),
         .package(url: "https://github.com/onevcat/Rainbow.git", from: "3.1.0"),
         .package(url: "https://github.com/jakeheis/SwiftCLI.git", from: "6.0.0"),
-        .package(url: "https://github.com/mxcl/Version.git", from: "1.1.0")
+        .package(url: "https://github.com/mxcl/Version.git", from: "1.1.0"),
     ],
     targets: [
         .target(name: "Mint", dependencies: ["MintCLI"]),

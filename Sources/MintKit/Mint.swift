@@ -137,8 +137,8 @@ public class Mint {
             let mintfile = try? Mintfile(path: mintFilePath) {
             // set version to version from mintfile
             if let mintFilePackage = mintfile.package(for: package.repo), !mintFilePackage.version.isEmpty {
-                package.version = mintFilePackage.version
-                package.repo = mintFilePackage.repo
+                package.location = mintFilePackage.location
+                package.revision = mintFilePackage.revision
                 if verbose {
                     output("Using \(package.repo) \(package.version) from Mintfile.")
                 }
@@ -149,7 +149,7 @@ public class Mint {
         if !package.repo.contains("/") {
             // repo reference by name. Get the full git repo
             if let existingGit = try getPackageGit(name: package.repo) {
-                package.repo = existingGit
+                package.location = .git(location: existingGit)
             } else {
                 throw MintError.packageNotFound(package.repo)
             }
@@ -164,14 +164,14 @@ public class Mint {
 
                 let tagReferences = tagOutput.stdout
                 if tagReferences.isEmpty {
-                    package.version = "master"
+                    package.revision = .branch("master")
                 } else {
                     let tags = tagReferences.split(separator: "\n").map { String($0.split(separator: "\t").last!.split(separator: "/").last!) }
                     let versions = convertTagsToVersionMap(tags)
                     if let latestVersion = versions.keys.sorted().last, let tag = versions[latestVersion] {
-                        package.version = tag
+                        package.revision = .tag(tag)
                     } else {
-                        package.version = "master"
+                        package.revision = .branch("master")
                     }
                 }
             } catch {
