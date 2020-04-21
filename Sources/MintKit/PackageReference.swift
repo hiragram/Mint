@@ -23,14 +23,24 @@ public class PackageReference: CustomStringConvertible {
         case github(repo: String)
         case git(location: String)
         case localGit(path: String)
+        case localPackage(path: String)
         case unknown
 
         var string: String {
             switch self {
-            case .github(repo: let name), .git(location: let name), .localGit(path: let name):
+            case .github(repo: let name), .git(location: let name), .localGit(path: let name), .localPackage(path: let name):
                 return name
             case .unknown:
                 fatalError()
+            }
+        }
+
+        var isGitRepository: Bool {
+            switch self {
+            case .git(location: _), .github(repo: _), .localGit(path: _):
+                return true
+            case .localPackage(path: _), .unknown:
+                return false
             }
         }
     }
@@ -115,6 +125,12 @@ public class PackageReference: CustomStringConvertible {
             "git": [
                 "tag", "branch", "commit",
             ],
+            "local_git": [
+                "tag", "branch", "commit",
+            ],
+            "local_package": [
+
+            ],
         ]
 
         // Make sure only one location key is contained.
@@ -130,11 +146,11 @@ public class PackageReference: CustomStringConvertible {
         let revisionKeys = yamlEntry.keys
             .filter { locationAndRevisionKeys[locationKey]!.contains($0) }
 
-        guard revisionKeys.count == 1 else {
-            fatalError("can include one revision key")
+        guard revisionKeys.count <= 1 else {
+            fatalError("more than 1 revision key found.")
         }
 
-        let revisionKey = revisionKeys.first!
+        let revisionKey = revisionKeys.first
 
         let location: Location
         let locationValue = yamlEntry[locationKey] as! String
@@ -143,21 +159,28 @@ public class PackageReference: CustomStringConvertible {
             location = .github(repo: locationValue)
         case "git":
             location = .git(location: locationValue)
+        case "local_git":
+            location = .localGit(path: locationValue)
+        case "local_package":
+            location = .localPackage(path: locationValue)
         default:
-            location = .unknown
+            fatalError()
         }
 
-        let revision: Revision
-        let revisionValue = yamlEntry[revisionKey] as! String
-        switch revisionKey {
-        case "tag":
-            revision = .tag(revisionValue)
-        case "branch":
-            revision = .branch(revisionValue)
-        case "commit":
-            revision = .commit(revisionValue)
-        default:
-            revision = .unknown(revisionValue)
+        let revision: Revision?
+        if let revisionValue = revisionKey.flatMap({ yamlEntry[$0] as? String }) {
+            switch revisionKey {
+            case "tag":
+                revision = .tag(revisionValue)
+            case "branch":
+                revision = .branch(revisionValue)
+            case "commit":
+                revision = .commit(revisionValue)
+            default:
+                revision = .unknown(revisionValue)
+            }
+        } else {
+            revision = nil
         }
 
         self.init(location: location, revision: revision)
@@ -171,24 +194,39 @@ public class PackageReference: CustomStringConvertible {
         return repo.components(separatedBy: "/").last!.replacingOccurrences(of: ".git", with: "")
     }
 
-    public var gitPath: String {
+    public var gitPath: String? {
+//        guard location.isGitRepository else {
+//            fatalError()
+//        }
         if let url = URL(string: repo), url.scheme != nil {
             return url.absoluteString
         } else {
-            if repo.contains("@") {
-                return repo
-            } else if repo.contains("github.com") {
-                return "https://\(repo).git"
-            } else if repo.components(separatedBy: "/").first!.contains(".") {
-                return "https://\(repo)"
-            } else {
+            switch location {
+            case .github(repo: let repo):
                 return "https://github.com/\(repo).git"
+            case .git(location: let gitPath):
+                return gitPath
+            case .localGit(path: let gitPath):
+                return gitPath
+            case .localPackage(path: _):
+                return nil
+            case .unknown:
+                fatalError()
             }
+//            if repo.contains("@") {
+//                return repo
+//            } else if repo.contains("github.com") {
+//                return "https://\(repo).git"
+//            } else if repo.components(separatedBy: "/").first!.contains(".") {
+//                return "https://\(repo)"
+//            } else {
+//                return "https://github.com/\(repo).git"
+//            }
         }
     }
 
     var repoPath: String {
-        return gitPath
+        return (gitPath ?? location.string)
             .components(separatedBy: "://").last!
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ".git", with: "")

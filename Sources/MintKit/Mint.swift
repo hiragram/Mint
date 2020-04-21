@@ -134,7 +134,8 @@ public class Mint {
         // resolve version from MintFile
         if package.version.isEmpty,
             mintFilePath.exists,
-            let mintfile = try? Mintfile(path: mintFilePath) {
+//            let mintfile = try? Mintfile(path: mintFilePath) {
+            let mintfile = try? MintfileYAML(path: mintFilePath) {
             // set version to version from mintfile
             if let mintFilePackage = mintfile.package(for: package.repo), !mintFilePackage.version.isEmpty {
                 package.location = mintFilePackage.location
@@ -156,7 +157,7 @@ public class Mint {
         }
 
         // resolve latest version from git repo
-        if package.version.isEmpty {
+        if package.location.isGitRepository && package.version.isEmpty {
             // we don't have a specific version, let's get the latest tag
             output("Finding latest version of \(package.name)")
             do {
@@ -175,7 +176,7 @@ public class Mint {
                     }
                 }
             } catch {
-                throw MintError.repoNotFound(package.gitPath)
+                throw MintError.repoNotFound(package.gitPath!)
             }
             return true
         } else {
@@ -323,6 +324,13 @@ public class Mint {
                 command: cloneCommand,
                 directory: checkoutPath,
                 error: .cloneError(package))
+        case .localPackage(path: let path):
+            let copyCommand = "cp -r \(path) \(package.repoPath)"
+
+            try runPackageCommand(name: "Copying \(package.namedVersion)",
+                command: copyCommand,
+                directory: checkoutPath,
+                error: .cloneError(package)) // todo: this is not clone actually
         case .unknown:
             fatalError()
         }
@@ -389,7 +397,7 @@ public class Mint {
             }
         }
 
-        try addPackage(git: package.gitPath, path: packagePath.packagePath)
+        try addPackage(git: package.gitPath ?? package.location.string, path: packagePath.packagePath)
 
         output("Installed \(package.name) \(package.version)".green)
         try? packageCheckoutPath.delete()
