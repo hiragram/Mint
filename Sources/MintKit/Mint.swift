@@ -175,7 +175,7 @@ public class Mint {
                     }
                 }
             } catch {
-                throw MintError.repoNotFound(package.gitPath!)
+                throw MintError.repoNotFound(package.gitPath)
             }
             return true
         } else {
@@ -305,7 +305,7 @@ public class Mint {
                 cloneCommand = "git clone --depth 1 -b \(name) \(package.gitPath) \(package.repoPath)"
             case .commit(let name):
                 cloneCommand = "git clone \(package.gitPath) \(package.repoPath) ; cd \(package.repoPath) ; git checkout \(name) ; cd -"
-            case .unknown(_), .none:
+            case .none:
                 fatalError()
             }
 
@@ -313,14 +313,14 @@ public class Mint {
                                   command: cloneCommand,
                                   directory: checkoutPath,
                                   error: .cloneError(package))
-        case .localGit(path: let path):
+        case .localGit(absolutePath: let path):
             let cloneCommand: String
             switch package.revision {
             case .branch(let name), .tag(let name):
-                cloneCommand = "git clone --depth 1 -b \(name) -l \(path) \(package.repoPath)"
+                cloneCommand = "git clone -b \(name) -l \(path) \(package.repoPath)"
             case .commit(let name):
                 cloneCommand = "git clone -l \(path) \(package.repoPath) ; cd \(package.repoPath) ; git checkout \(name) ; cd -"
-            case .unknown, .none:
+            case .none:
                 fatalError()
             }
 
@@ -328,15 +328,13 @@ public class Mint {
                 command: cloneCommand,
                 directory: checkoutPath,
                 error: .cloneError(package))
-        case .localPackage(path: let path):
+        case .localPackage(absolutePath: let path):
             let copyCommand = "cp -r \(path) \(package.repoPath)"
 
             try runPackageCommand(name: "Copying \(package.namedVersion)",
                 command: copyCommand,
                 directory: checkoutPath,
                 error: .cloneError(package)) // todo: this is not clone actually
-        case .unknown:
-            fatalError()
         }
 
 

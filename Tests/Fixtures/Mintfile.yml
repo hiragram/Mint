@@ -1,0 +1,20 @@
+packages:
+  - github: yonaskolb/mint
+    tag: 0.14.2
+  - github: yonaskolb/mint
+    branch: master
+  - github: yonaskolb/mint
+    commit: b0c0837
+  - git: git@github.com:yonaskolb/Mint.git
+    tag: 0.14.2
+  - git: git@github.com:yonaskolb/Mint.git
+    branch: master
+  - git: git@github.com:yonaskolb/Mint.git
+    commit: b0c0837
+  - local_git: ~/Development/Mint_localrepo
+    tag: 0.14.2
+  - local_git: ~/Development/Mint_localrepo
+    branch: master
+  - local_git: ~/Development/Mint_localrepo
+    commit: b0c0837
+  - local_package: /Users/yuya-hirayama/Development/DummySwiftPackage

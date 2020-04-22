@@ -23,7 +23,7 @@ public struct MintfileYAML {
 
         let packageEntry = yaml["packages"] as! [[String: Any]]
 
-        let packages = packageEntry.map(PackageReference.init(yamlEntry:))
+        let packages = try packageEntry.map(PackageReference.init(yamlEntry:))
 
         self.packages = packages
     }

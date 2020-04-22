@@ -26,27 +26,26 @@ public class PackageReference: CustomStringConvertible {
 
         case github(repo: String)
         case git(location: String)
-        case localGit(path: String)
-        case localPackage(path: String)
+        case localGit(absolutePath: String)
+        case localPackage(absolutePath: String)
         case legacyStyle(String)
-        case unknown
 
         var string: String {
             switch self {
-            case .github(repo: let name), .git(location: let name), .localGit(path: let name), .localPackage(path: let name):
+            case .github(repo: let name):
+                return "https://github.com/\(name).git"
+            case .git(location: let name), .localGit(absolutePath: let name), .localPackage(absolutePath: let name):
                 return name
             case .legacyStyle(let legacyDefinitionText):
                 return legacyDefinitionText
-            case .unknown:
-                fatalError()
             }
         }
 
         var isGitRepository: Bool {
             switch self {
-            case .git(location: _), .github(repo: _), .localGit(path: _), .legacyStyle(_):
+            case .git(location: _), .github(repo: _), .localGit(absolutePath: _), .legacyStyle(_):
                 return true
-            case .localPackage(path: _), .unknown:
+            case .localPackage(absolutePath: _):
                 return false
             }
         }
@@ -56,14 +55,11 @@ public class PackageReference: CustomStringConvertible {
         case tag(String)
         case branch(String)
         case commit(String)
-        case unknown(String?)
 
         var string: String {
             switch self {
             case .branch(let name), .tag(let name), .commit(let name):
                 return name
-            case .unknown(let text):
-                return text ?? ""
             }
         }
     }
@@ -124,38 +120,24 @@ public class PackageReference: CustomStringConvertible {
         self.init(location: location, revision: revision)
     }
 
-    public convenience init(yamlEntry: [String: Any]) {
-        let locationAndRevisionKeys: [String: [String]] = [
-            "github": [
-                "tag", "branch", "commit",
-            ],
-            "git": [
-                "tag", "branch", "commit",
-            ],
-            "local_git": [
-                "tag", "branch", "commit",
-            ],
-            "local_package": [
-
-            ],
-        ]
+    public convenience init(yamlEntry: [String: Any]) throws {
+        let locationSpecifierKeys = ["github", "git", "local_git", "local_package"]
+        let revisionSpecifierKeys = ["tag", "branch", "commit"]
 
         // Make sure only one location key is contained.
         let locationKeys = yamlEntry.keys
-            .filter { locationAndRevisionKeys.keys.contains($0) }
+            .filter { locationSpecifierKeys.contains($0) }
 
-        guard locationKeys.count == 1 else {
-            fatalError("include exact one location key.")
+        guard locationKeys.count <= 1 else {
+            throw MintError.locationDuplicated(yamlEntry)
         }
 
-        let locationKey = locationKeys.first!
+        guard let locationKey = locationKeys.first else {
+            throw MintError.locationSpecifierNotFound(yamlEntry)
+        }
 
         let revisionKeys = yamlEntry.keys
-            .filter { locationAndRevisionKeys[locationKey]!.contains($0) }
-
-        guard revisionKeys.count <= 1 else {
-            fatalError("more than 1 revision key found.")
-        }
+            .filter { revisionSpecifierKeys.contains($0) }
 
         let revisionKey = revisionKeys.first
 
@@ -167,11 +149,19 @@ public class PackageReference: CustomStringConvertible {
         case "git":
             location = .git(location: locationValue)
         case "local_git":
-            location = .localGit(path: locationValue)
+            location = .localGit(absolutePath: locationValue)
         case "local_package":
-            location = .localPackage(path: locationValue)
+            location = .localPackage(absolutePath: locationValue)
+            let unnecessaryRevisionSpecifiers = yamlEntry.keys.filter { revisionSpecifierKeys.contains($0) }
+            guard unnecessaryRevisionSpecifiers.isEmpty else {
+                throw MintError.localPackageNeverHaveRevisionSpecifier(location, unnecessaryRevisionSpecifiers)
+            }
         default:
-            fatalError()
+            throw MintError.locationSpecifierNotFound(yamlEntry)
+        }
+
+        guard revisionKeys.count <= 1 else {
+            throw MintError.revisionDuplicated(location, revisionKeys)
         }
 
         let revision: Revision?
@@ -184,7 +174,7 @@ public class PackageReference: CustomStringConvertible {
             case "commit":
                 revision = .commit(revisionValue)
             default:
-                fatalError()
+                revision = nil
             }
         } else {
             revision = nil
@@ -201,7 +191,7 @@ public class PackageReference: CustomStringConvertible {
         return repo.components(separatedBy: "/").last!.replacingOccurrences(of: ".git", with: "")
     }
 
-    public var gitPath: String? {
+    public var gitPath: String {
 //        guard location.isGitRepository else {
 //            fatalError()
 //        }
@@ -213,10 +203,10 @@ public class PackageReference: CustomStringConvertible {
                 return "https://github.com/\(repo).git"
             case .git(location: let gitPath):
                 return gitPath
-            case .localGit(path: let gitPath):
+            case .localGit(absolutePath: let gitPath):
                 return gitPath
-            case .localPackage(path: _):
-                return nil
+            case .localPackage(absolutePath: _):
+                return ""
             case .legacyStyle(let repo):
                 if repo.contains("@") {
                     return repo
@@ -227,15 +217,14 @@ public class PackageReference: CustomStringConvertible {
                 } else {
                     return "https://github.com/\(repo).git"
                 }
-            case .unknown:
-                fatalError()
             }
         }
     }
 
     var repoPath: String {
-        return (gitPath ?? location.string)
+        location.string
             .components(separatedBy: "://").last!
+            .components(separatedBy: "@").last!
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ".git", with: "")
             .replacingOccurrences(of: ":", with: "_")
@@ -246,5 +235,32 @@ public class PackageReference: CustomStringConvertible {
 extension PackageReference: Equatable {
     public static func == (lhs: PackageReference, rhs: PackageReference) -> Bool {
         return lhs.repo == rhs.repo && lhs.version == rhs.version
+    }
+}
+
+extension PackageReference {
+    func preparePackageDictionaryCommand() -> String {
+        let specificRevision = revision ?? .branch("master")
+
+        switch location {
+        case .legacyStyle:
+            return "git clone --depth 1 -b \(version) \(gitPath) \(repoPath)"
+        case .git, .github:
+            switch specificRevision {
+            case .branch(let name), .tag(let name):
+                return "git clone --depth 1 -b \(name) \(gitPath) \(repoPath)"
+            case .commit(let name):
+                return "git clone \(gitPath) \(repoPath) ; cd \(repoPath) ; git checkout \(name) ; cd -"
+            }
+        case .localGit(absolutePath: let path):
+            switch specificRevision {
+            case .branch(let name), .tag(let name):
+                return "git clone -b \(name) -l \(path) \(repoPath)"
+            case .commit(let name):
+                return "git clone -l \(path) \(repoPath) ; cd \(repoPath) ; git checkout \(name) ; cd -"
+            }
+        case .localPackage(absolutePath: let path):
+            return "cp -r \(path) \(repoPath)"
+        }
     }
 }
