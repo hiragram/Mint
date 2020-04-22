@@ -8,7 +8,7 @@ class PackageTests: XCTestCase {
     func testPackagePaths() {
 
         let testMint = Mint(path: "/testPath/mint", linkPath: "/testPath/mint-installs")
-        let package = PackageReference(location: .github(repo: "yonaskolb/mint"), revision: .version(major: 1, minor: 2, patch: 0))
+        let package = PackageReference(location: .github(repo: "yonaskolb/mint"), revision: .tag("1.2.0"))
         let packagePath = PackagePath(path: testMint.packagesPath, package: package)
 
         XCTAssertEqual(testMint.path, "/testPath/mint")

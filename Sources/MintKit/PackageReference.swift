@@ -3,7 +3,11 @@ import PathKit
 
 public class PackageReference: CustomStringConvertible {
     public var description: String {
-        "\(repo)@\(version)"
+        if version.isEmpty {
+            return repo
+        } else {
+            return "\(repo)@\(version)"
+        }
     }
 
     public var location: Location
@@ -24,12 +28,15 @@ public class PackageReference: CustomStringConvertible {
         case git(location: String)
         case localGit(path: String)
         case localPackage(path: String)
+        case legacyStyle(String)
         case unknown
 
         var string: String {
             switch self {
             case .github(repo: let name), .git(location: let name), .localGit(path: let name), .localPackage(path: let name):
                 return name
+            case .legacyStyle(let legacyDefinitionText):
+                return legacyDefinitionText
             case .unknown:
                 fatalError()
             }
@@ -37,7 +44,7 @@ public class PackageReference: CustomStringConvertible {
 
         var isGitRepository: Bool {
             switch self {
-            case .git(location: _), .github(repo: _), .localGit(path: _):
+            case .git(location: _), .github(repo: _), .localGit(path: _), .legacyStyle(_):
                 return true
             case .localPackage(path: _), .unknown:
                 return false
@@ -61,12 +68,9 @@ public class PackageReference: CustomStringConvertible {
         }
     }
 
-    @available(*, unavailable)
     public init(repo: String, version: String = "") {
-//        self.repo = repo
-//        self.version = version
-
-        fatalError()
+        self.location = .legacyStyle(repo)
+        self.revision = .tag(version)
     }
 
     public init(location: Location, revision: Revision?) {
@@ -82,37 +86,40 @@ public class PackageReference: CustomStringConvertible {
         let version: String
         let location: Location
         let revision: Revision?
+
+        // This means `package` looks like "git@github.com:yonaskolb/Mint.git@0.0.1"
         if packageParts.count == 3 {
             repo = [packageParts[0], packageParts[1]].joined(separator: "@")
             version = packageParts[2]
-            location = { fatalError() }()
-            revision = { fatalError() }()
+            location = .legacyStyle(repo)
+            revision = .tag(version)
 
         } else if packageParts.count == 2 {
+            // This means `package` looks like "git@github.com:yonaskolb/Mint.git"
             if packageParts[1].contains(":") {
                 repo = [packageParts[0], packageParts[1]].joined(separator: "@")
                 version = ""
 
-                location = { fatalError() }()
-                revision = { fatalError() }()
+                location = .legacyStyle(repo)
+                revision = nil
             } else if packageParts[0].contains("ssh://") {
                 repo = [packageParts[0], packageParts[1]].joined(separator: "@")
                 version = ""
-                location = { fatalError() }()
-                revision = { fatalError() }()
+                location = .legacyStyle(repo)
+                revision = nil
             } else {
                 repo = packageParts[0]
                 version = packageParts[1]
 
-                location = .github(repo: packageParts[0])
-                revision = .unknown(packageParts[1])
+                location = .legacyStyle(repo)
+                revision = .tag(version)
             }
         } else {
             repo = package
             version = ""
 
-            location = { fatalError() }()
-            revision = { fatalError() }()
+            location = .legacyStyle(package)
+            revision = nil
         }
         self.init(location: location, revision: revision)
     }
@@ -177,7 +184,7 @@ public class PackageReference: CustomStringConvertible {
             case "commit":
                 revision = .commit(revisionValue)
             default:
-                revision = .unknown(revisionValue)
+                fatalError()
             }
         } else {
             revision = nil
@@ -210,18 +217,19 @@ public class PackageReference: CustomStringConvertible {
                 return gitPath
             case .localPackage(path: _):
                 return nil
+            case .legacyStyle(let repo):
+                if repo.contains("@") {
+                    return repo
+                } else if repo.contains("github.com") {
+                    return "https://\(repo).git"
+                } else if repo.components(separatedBy: "/").first!.contains(".") {
+                    return "https://\(repo)"
+                } else {
+                    return "https://github.com/\(repo).git"
+                }
             case .unknown:
                 fatalError()
             }
-//            if repo.contains("@") {
-//                return repo
-//            } else if repo.contains("github.com") {
-//                return "https://\(repo).git"
-//            } else if repo.components(separatedBy: "/").first!.contains(".") {
-//                return "https://\(repo)"
-//            } else {
-//                return "https://github.com/\(repo).git"
-//            }
         }
     }
 

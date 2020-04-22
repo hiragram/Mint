@@ -16,12 +16,12 @@ class MintfileTests: XCTestCase {
         XCTAssertEqual(
             mintfile.packages,
             [
-                PackageReference(location: .github(repo: "yonaskolb/xcodegen"), revision: .version(major: 1, minor: 8, patch: 0)),
-                PackageReference(location: .github(repo: "realm/SwiftLint"), revision: .version(major: 0, minor: 25, patch: 0)),
+                PackageReference(location: .github(repo: "yonaskolb/xcodegen"), revision: .tag("1.8.0")),
+                PackageReference(location: .github(repo: "realm/SwiftLint"), revision: .tag("0.25.0")),
             ]
         )
 
-        let expectedPackage = PackageReference(location: .github(repo: "realm/SwiftLint"), revision: .version(major: 0, minor: 25, patch: 0))
+        let expectedPackage = PackageReference(location: .github(repo: "realm/SwiftLint"), revision: .tag("0.25.0"))
         XCTAssertEqual(mintfile.package(for: "realm/SwiftLint"), expectedPackage)
         XCTAssertEqual(mintfile.package(for: "SwiftLint"), expectedPackage)
         XCTAssertEqual(mintfile.package(for: "realm/swiftLint"), expectedPackage)
