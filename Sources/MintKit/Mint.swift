@@ -441,7 +441,7 @@ public class Mint {
 
         let mintFile: MintfileProtocol
 
-        if path.extension == "yml" {
+        if mintFilePath.extension == "yml" {
             mintFile = try MintfileYAML(path: mintFilePath)
         } else {
             mintFile = try Mintfile(path: mintFilePath)
