@@ -23,8 +23,34 @@ public struct MintfileYAML: MintfileProtocol {
 
         let packageEntry = yaml["packages"] as! [[String: Any]]
 
-        let packages = try packageEntry.map(PackageReference.init(yamlEntry:))
+        let pathFixedPackageEntry = packageEntry.map { (packageRow) -> [String: Any] in
+            packageRow.reduce(into: [String: Any]()) { (result, keyValue) in
+                if Self.keysContainPath.contains(keyValue.key) {
+                    guard let pathString = keyValue.value as? String else {
+                        fatalError()
+                    }
+
+                    let fixedPath: Path
+                    let rawPath = Path(pathString).normalize()
+                    if rawPath.isAbsolute {
+                        fixedPath = rawPath
+                    } else {
+                        fixedPath = path + rawPath
+                    }
+                    result[keyValue.key] = fixedPath.string
+                } else {
+                    result[keyValue.key] = keyValue.value
+                }
+            }
+        }
+
+        let packages = try pathFixedPackageEntry.map(PackageReference.init(yamlEntry:))
 
         self.packages = packages
     }
+
+    private static let keysContainPath: [String] = [
+        "local_git",
+        "local_package"
+    ]
 }

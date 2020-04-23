@@ -17,4 +17,4 @@ packages:
     branch: master
   - local_git: ~/Development/Mint_localrepo
     commit: b0c0837
-  - local_package: /Users/yuya-hirayama/Development/DummySwiftPackage
+  - local_package: ./DummySwiftPackage

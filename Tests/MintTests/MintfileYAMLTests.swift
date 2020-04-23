@@ -15,10 +15,10 @@ class MintfileYAMLTests: XCTestCase {
                 PackageReference(location: .git(location: "git@github.com:yonaskolb/Mint.git"), revision: .tag("0.14.2")),
                 PackageReference(location: .git(location: "git@github.com:yonaskolb/Mint.git"), revision: .branch("master")),
                 PackageReference(location: .git(location: "git@github.com:yonaskolb/Mint.git"), revision: .commit("b0c0837")),
-                PackageReference(location: .localGit(absolutePath: "~/Development/Mint_localrepo"), revision: .tag("0.14.2")),
-                PackageReference(location: .localGit(absolutePath: "~/Development/Mint_localrepo"), revision: .branch("master")),
-                PackageReference(location: .localGit(absolutePath: "~/Development/Mint_localrepo"), revision: .commit("b0c0837")),
-                PackageReference(location: .localPackage(absolutePath: "/Users/yuya-hirayama/Development/DummySwiftPackage"), revision: nil),
+                PackageReference(location: .localGit(absolutePath: Path("~/Development/Mint_localrepo").normalize().absolute().string), revision: .tag("0.14.2")),
+                PackageReference(location: .localGit(absolutePath: Path("~/Development/Mint_localrepo").normalize().absolute().string), revision: .branch("master")),
+                PackageReference(location: .localGit(absolutePath: Path("~/Development/Mint_localrepo").normalize().absolute().string), revision: .commit("b0c0837")),
+                PackageReference(location: .localPackage(absolutePath: (mintFileYamlFixture + Path("DummySwiftPackage")).string), revision: nil),
             ]
         )
     }
