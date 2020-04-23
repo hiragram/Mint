@@ -16,6 +16,7 @@ public enum MintError: Error, CustomStringConvertible, Equatable, LocalizedError
     case revisionDuplicated(PackageReference.Location, [String])
     case localPackageNeverHaveRevisionSpecifier(PackageReference.Location, [String])
     case locationSpecifierNotFound([String: Any])
+    case inconsistentCache(String)
 
     public var description: String {
         switch self {
@@ -33,6 +34,7 @@ public enum MintError: Error, CustomStringConvertible, Equatable, LocalizedError
         case let .localPackageNeverHaveRevisionSpecifier(location, revisionSpecifiers): return "Local package \(location) cannot have revision specifier. (\(revisionSpecifiers.sorted().joined(separator: ", ")))"
         case let .locationSpecifierNotFound(yamlEntry): return "No location specifier found. package info: \(yamlEntry)"
         case let .locationDuplicated(yamlEntry): return "There is a package that has more than one location specifier. package info: \(yamlEntry)"
+        case let .inconsistentCache(error): return "Inconsistent cache, clear it up.\nError: \(error)"
         }
     }
 

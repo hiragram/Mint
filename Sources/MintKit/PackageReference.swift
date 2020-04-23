@@ -37,7 +37,15 @@ public class PackageReference: CustomStringConvertible {
             case .git(location: let name), .localGit(absolutePath: let name), .localPackage(absolutePath: let name):
                 return name
             case .legacyStyle(let legacyDefinitionText):
-                return legacyDefinitionText
+                if legacyDefinitionText.contains("@") {
+                    return legacyDefinitionText
+                } else if legacyDefinitionText.contains("github.com") {
+                    return "https://\(legacyDefinitionText).git"
+                } else if legacyDefinitionText.components(separatedBy: "/").first!.contains(".") {
+                    return "https://\(legacyDefinitionText)"
+                } else {
+                    return "https://github.com/\(legacyDefinitionText).git"
+                }
             }
         }
 
@@ -207,17 +215,22 @@ public class PackageReference: CustomStringConvertible {
                 return gitPath
             case .localPackage(absolutePath: _):
                 return ""
-            case .legacyStyle(let repo):
-                if repo.contains("@") {
-                    return repo
-                } else if repo.contains("github.com") {
-                    return "https://\(repo).git"
-                } else if repo.components(separatedBy: "/").first!.contains(".") {
-                    return "https://\(repo)"
-                } else {
-                    return "https://github.com/\(repo).git"
-                }
+            case .legacyStyle(_):
+                return location.string
             }
+        }
+    }
+
+    public var versionCouldBeSHA: Bool {
+        switch version {
+        case "master", "develop":
+            return false
+        default:
+            let characterSet = CharacterSet.letters.union(.decimalDigits)
+            if version.rangeOfCharacter(from: characterSet.inverted) != nil {
+                return false
+            }
+            return true
         }
     }
 

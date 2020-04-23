@@ -2,6 +2,19 @@
 
 ## Master
 
+## 0.14.2
+
+#### Changed
+- Changeed `list` output to show what executables are installed if they differ from package name, and also disambiguate packages with the same name and different sources [#170](https://github.com/yonaskolb/Mint/pull/170) @acecilia
+
+#### Fixed
+- Fixed the `run` to support when a package with the same name is installed from different origins (for example: yonaskolb/xcodegen and acecilia/xcodegen). [#170](https://github.com/yonaskolb/Mint/pull/170) @acecilia
+- Fix the `uninstall` option: previously, the name for the symlink to remove was calculated using the package name passed from command line, which could be partial (for example `simple` instead of `simplepackage`), resulting on the symlink not being removed. [#170](https://github.com/yonaskolb/Mint/pull/170) @acecilia
+- Fixed installing versions that reference a git sha [#172](https://github.com/yonaskolb/Mint/pull/172) @yonaskolb
+- Added escaping of paths when linking. Avoids an error, when MINT_LINK_PATH contains spaces. @lutzifer
+
+[Commits](https://github.com/yonaskolb/Mint/compare/0.14.1...0.14.2)
+
 ## 0.14.1
 
 #### Fixed
