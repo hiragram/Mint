@@ -35,7 +35,7 @@ public struct MintfileYAML: MintfileProtocol {
                     if rawPath.isAbsolute {
                         fixedPath = rawPath
                     } else {
-                        fixedPath = path + rawPath
+                        fixedPath = path.parent() + rawPath
                     }
                     result[keyValue.key] = fixedPath.string
                 } else {
