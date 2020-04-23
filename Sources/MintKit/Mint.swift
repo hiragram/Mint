@@ -73,7 +73,7 @@ public class Mint {
         try writeMetadata(metadata)
     }
 
-    func getGitRepos(name: String) throws -> [String] {
+    func getLocations(name: String) throws -> [String] {
         let metadata = try readMetadata()
 
         let gitRepos = metadata.packages
@@ -143,20 +143,32 @@ public class Mint {
         // resolve repo from installed packages
         if !package.repo.contains("/") {
             // repo reference by name. Get the full git repo
-            let gitRepos = try getGitRepos(name: package.repo)
+            let locations = try getLocations(name: package.repo)
 
-            let gitRepo: String
-            switch gitRepos.count {
+            let locationString: String
+            switch locations.count {
             case 0:
                 throw MintError.packageNotFound(package.repo)
 
             case 1:
-                gitRepo = gitRepos[0]
+                locationString = locations[0]
 
             default:
-                gitRepo = Input.readOption(options: gitRepos, prompt: "There are multiple git repositories matching '\(package.repo)', which one would you like to use?")
+                locationString = Input.readOption(options: locations, prompt: "There are multiple git repositories matching '\(package.repo)', which one would you like to use?")
             }
-            package.location = .legacyStyle(gitRepo)
+
+            let location: PackageReference.Location
+            if locationString.starts(with: "/") {
+                let locationPath = Path(locationString)
+                if try locationPath.children().contains(Path(".git")) {
+                    location = .localGit(absolutePath: locationString)
+                } else {
+                    location = .localPackage(absolutePath: locationString)
+                }
+            } else {
+                location = .legacyStyle(locationString)
+            }
+            package.location = location
         }
 
         // resolve latest version from git repo
@@ -362,7 +374,7 @@ public class Mint {
             }
         }
 
-        try addPackage(git: package.gitPath ?? package.location.string, path: packagePath.packagePath)
+        try addPackage(git: package.location.string, path: packagePath.packagePath)
 
         output("Installed \(package.name) \(package.version)".green)
         try? packageCheckoutPath.delete()
