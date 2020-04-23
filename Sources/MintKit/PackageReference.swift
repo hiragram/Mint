@@ -21,7 +21,7 @@ public class PackageReference: CustomStringConvertible {
         revision?.string ?? ""
     }
 
-    public enum Location {
+    public enum Location: Equatable {
         public typealias StringLiteralType = String
 
         case github(repo: String)
@@ -51,7 +51,7 @@ public class PackageReference: CustomStringConvertible {
         }
     }
 
-    public enum Revision {
+    public enum Revision: Equatable {
         case tag(String)
         case branch(String)
         case commit(String)
@@ -234,7 +234,8 @@ public class PackageReference: CustomStringConvertible {
 
 extension PackageReference: Equatable {
     public static func == (lhs: PackageReference, rhs: PackageReference) -> Bool {
-        return lhs.repo == rhs.repo && lhs.version == rhs.version
+//        return lhs.repo == rhs.repo && lhs.version == rhs.version
+        return lhs.location == rhs.location && lhs.revision == lhs.revision
     }
 }
 

@@ -2,7 +2,7 @@ import Foundation
 import Yams
 import PathKit
 
-public struct MintfileYAML {
+public struct MintfileYAML: MintfileProtocol {
     let packages: [PackageReference]
 
     public func package(for repo: String) -> PackageReference? {

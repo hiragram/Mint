@@ -133,8 +133,15 @@ public class Mint {
 
         // resolve version from MintFile
         if package.version.isEmpty,
-            mintFilePath.exists,
-            let mintfile = try? Mintfile(path: mintFilePath) {
+            mintFilePath.exists {
+            let mintfile: MintfileProtocol
+
+            if path.extension == "yml" {
+                mintfile = try MintfileYAML(path: mintFilePath)
+            } else {
+                mintfile = try Mintfile(path: mintFilePath)
+            }
+
             // set version to version from mintfile
             if let mintFilePackage = mintfile.package(for: package.repo), !mintFilePackage.version.isEmpty {
                 package.location = mintFilePackage.location
@@ -476,7 +483,13 @@ public class Mint {
 
     public func bootstrap(link: Bool = false) throws {
 
-        let mintFile = try Mintfile(path: mintFilePath)
+        let mintFile: MintfileProtocol
+
+        if path.extension == "yml" {
+            mintFile = try MintfileYAML(path: mintFilePath)
+        } else {
+            mintFile = try Mintfile(path: mintFilePath)
+        }
 
         guard !mintFile.packages.isEmpty else {
             standardOut <<< "🌱  Mintfile is empty"
