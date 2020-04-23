@@ -295,64 +295,12 @@ public class Mint {
 
         try? packageCheckoutPath.delete()
 
-        switch package.location {
-        case .legacyStyle:
-            let cloneCommand = "git clone --depth 1 -b \(package.version) \(package.gitPath) \(package.repoPath)"
-            try runPackageCommand(name: "Cloning \(package.namedVersion)",
-                                  command: cloneCommand,
-                                  directory: checkoutPath,
-                                  error: .cloneError(package))
-        case .git, .github:
-            let cloneCommand: String
-            switch package.revision {
-            case .branch(let name), .tag(let name):
-                cloneCommand = "git clone --depth 1 -b \(name) \(package.gitPath) \(package.repoPath)"
-            case .commit(let name):
-                cloneCommand = "git clone \(package.gitPath) \(package.repoPath) ; cd \(package.repoPath) ; git checkout \(name) ; cd -"
-            case .none:
-                fatalError()
-            }
+        let cloneCommand = package.preparePackageDictionaryCommand()
+        try runPackageCommand(name: "Cloning \(package.namedVersion)",
+                              command: cloneCommand,
+                              directory: checkoutPath,
+                              error: .cloneError(package))
 
-            try runPackageCommand(name: "Cloning \(package.namedVersion)",
-                                  command: cloneCommand,
-                                  directory: checkoutPath,
-                                  error: .cloneError(package))
-        case .localGit(absolutePath: let path):
-            let cloneCommand: String
-            switch package.revision {
-            case .branch(let name), .tag(let name):
-                cloneCommand = "git clone -b \(name) -l \(path) \(package.repoPath)"
-            case .commit(let name):
-                cloneCommand = "git clone -l \(path) \(package.repoPath) ; cd \(package.repoPath) ; git checkout \(name) ; cd -"
-            case .none:
-                fatalError()
-            }
-
-            try runPackageCommand(name: "Cloning \(package.namedVersion)",
-                command: cloneCommand,
-                directory: checkoutPath,
-                error: .cloneError(package))
-        case .localPackage(absolutePath: let path):
-            let copyCommand = "cp -r \(path) \(package.repoPath)"
-
-            try runPackageCommand(name: "Copying \(package.namedVersion)",
-                command: copyCommand,
-                directory: checkoutPath,
-                error: .cloneError(package)) // todo: this is not clone actually
-        }
-//        let cloneCommand: String
-//
-//        if package.versionCouldBeSHA {
-//            // version is maybe a SHA, so we can't do a shallow clone
-//            cloneCommand = "git clone \(package.gitPath) \(package.repoPath) && cd \(package.repoPath) && git checkout \(package.version)"
-//        } else {
-//            cloneCommand = "git clone --depth 1 -b \(package.version) \(package.gitPath) \(package.repoPath)"
-//        }
-//        try runPackageCommand(name: "Cloning \(package.namedVersion)",
-//                              command: cloneCommand,
-//                              directory: checkoutPath,
-//                              error: .cloneError(package))
-//
         try runPackageCommand(name: "Resolving package",
                               command: "swift package resolve",
                               directory: packageCheckoutPath,

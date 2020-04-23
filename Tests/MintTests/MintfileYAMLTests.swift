@@ -77,8 +77,8 @@ class MintfileYAMLTests: XCTestCase {
             _ = try PackageReference(yamlEntry: [:])
         }
 
-        expectError(MintError.locationDuplicated(["github": "user/repo", "git": "git@example.com:user/repo"])) {
-            _ = try PackageReference(yamlEntry: ["github": "user/repo", "git": "git@example.com:user/repo"])
+        expectError(MintError.locationDuplicated(["github": "user/repo", "git": "git@example.com:user/repotest1"])) {
+            _ = try PackageReference(yamlEntry: ["github": "user/repo", "git": "git@example.com:user/repotest1"])
         }
     }
 }

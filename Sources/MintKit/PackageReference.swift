@@ -40,11 +40,19 @@ public class PackageReference: CustomStringConvertible {
                 if legacyDefinitionText.contains("@") {
                     return legacyDefinitionText
                 } else if legacyDefinitionText.contains("github.com") {
-                    return "https://\(legacyDefinitionText).git"
+                    if legacyDefinitionText.starts(with: "https://") {
+                        return legacyDefinitionText
+                    } else {
+                        return "https://\(legacyDefinitionText).git"
+                    }
                 } else if legacyDefinitionText.components(separatedBy: "/").first!.contains(".") {
                     return "https://\(legacyDefinitionText)"
-                } else {
+                } else if legacyDefinitionText.starts(with: "http://") || legacyDefinitionText.starts(with: "https://") {
+                    return legacyDefinitionText
+                } else if legacyDefinitionText.contains("/") {
                     return "https://github.com/\(legacyDefinitionText).git"
+                } else {
+                    return legacyDefinitionText
                 }
             }
         }
@@ -74,7 +82,11 @@ public class PackageReference: CustomStringConvertible {
 
     public init(repo: String, version: String = "") {
         self.location = .legacyStyle(repo)
-        self.revision = .tag(version)
+        if Self.versionCanBeSHA(version) {
+            self.revision = .commit(version)
+        } else {
+            self.revision = .tag(version)
+        }
     }
 
     public init(location: Location, revision: Revision?) {
@@ -234,6 +246,19 @@ public class PackageReference: CustomStringConvertible {
         }
     }
 
+    static func versionCanBeSHA(_ versionString: String) -> Bool {
+        switch versionString {
+        case "master", "develop":
+            return false
+        default:
+            let characterSet = CharacterSet.letters.union(.decimalDigits)
+            if versionString.rangeOfCharacter(from: characterSet.inverted) != nil {
+                return false
+            }
+            return true
+        }
+    }
+
     var repoPath: String {
         location.string
             .components(separatedBy: "://").last!
@@ -258,7 +283,14 @@ extension PackageReference {
 
         switch location {
         case .legacyStyle:
-            return "git clone --depth 1 -b \(version) \(gitPath) \(repoPath)"
+            switch revision {
+            case .tag(let name), .branch(let name):
+                return "git clone --depth 1 -b \(name) \(gitPath) \(repoPath)"
+            case .commit(let commit):
+                return "git clone \(gitPath) \(repoPath) ; cd \(repoPath) ; git checkout \(commit) ; cd -"
+            case .none:
+                return "git clone --depth 1 \(gitPath) \(repoPath)"
+            }
         case .git, .github:
             switch specificRevision {
             case .branch(let name), .tag(let name):

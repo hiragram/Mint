@@ -33,7 +33,7 @@ public enum MintError: Error, CustomStringConvertible, Equatable, LocalizedError
         case let .revisionDuplicated(location, duplicatedParameters): return "\(location) has more than one revision specifier. (\(duplicatedParameters.sorted().joined(separator: ", ")))"
         case let .localPackageNeverHaveRevisionSpecifier(location, revisionSpecifiers): return "Local package \(location) cannot have revision specifier. (\(revisionSpecifiers.sorted().joined(separator: ", ")))"
         case let .locationSpecifierNotFound(yamlEntry): return "No location specifier found. package info: \(yamlEntry)"
-        case let .locationDuplicated(yamlEntry): return "There is a package that has more than one location specifier. package info: \(yamlEntry)"
+        case let .locationDuplicated(_): return "There is a package that has more than one location specifier."
         case let .inconsistentCache(error): return "Inconsistent cache, clear it up.\nError: \(error)"
         }
     }
