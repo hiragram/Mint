@@ -18,7 +18,7 @@ public struct MintfileYAML: MintfileProtocol {
         let contents: String = try path.read()
 
         guard let yaml = try Yams.load(yaml: contents) as? [String: Any] else {
-            fatalError()
+            throw MintError.mintfileNotFound(path.string)
         }
 
         let packageEntry = yaml["packages"] as! [[String: Any]]
