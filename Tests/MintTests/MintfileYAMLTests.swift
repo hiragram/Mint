@@ -18,7 +18,7 @@ class MintfileYAMLTests: XCTestCase {
                 PackageReference(location: .localGit(absolutePath: Path("~/Development/Mint_localrepo").normalize().absolute().string), revision: .tag("0.14.2")),
                 PackageReference(location: .localGit(absolutePath: Path("~/Development/Mint_localrepo").normalize().absolute().string), revision: .branch("master")),
                 PackageReference(location: .localGit(absolutePath: Path("~/Development/Mint_localrepo").normalize().absolute().string), revision: .commit("b0c0837")),
-                PackageReference(location: .localPackage(absolutePath: (mintFileYamlFixture + Path("DummySwiftPackage")).string), revision: nil),
+                PackageReference(location: .localPackage(absolutePath: (mintFileYamlFixture.parent() + Path("DummySwiftPackage")).string), revision: nil),
             ]
         )
     }
