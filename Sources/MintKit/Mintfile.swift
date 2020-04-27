@@ -1,7 +1,12 @@
 import Foundation
 import PathKit
 
-public struct Mintfile {
+protocol MintfileProtocol {
+    var packages: [PackageReference] { get }
+    func package(for: String) -> PackageReference?
+}
+
+public struct Mintfile: MintfileProtocol {
 
     let packages: [PackageReference]
 

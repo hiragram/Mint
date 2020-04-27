@@ -8,7 +8,7 @@ class PackageTests: XCTestCase {
     func testPackagePaths() {
 
         let testMint = Mint(path: "/testPath/mint", linkPath: "/testPath/mint-installs")
-        let package = PackageReference(repo: "yonaskolb/mint", version: "1.2.0")
+        let package = PackageReference(location: .github(repo: "yonaskolb/mint"), revision: .tag("1.2.0"))
         let packagePath = PackagePath(path: testMint.packagesPath, package: package)
 
         XCTAssertEqual(testMint.path, "/testPath/mint")
@@ -86,6 +86,132 @@ class PackageTests: XCTestCase {
         XCTAssertEqual(PackageReference(package: "git@github.com:yonaskolb/Mint.git@0.0.1"), PackageReference(repo: "git@github.com:yonaskolb/Mint.git", version: "0.0.1"))
         XCTAssertEqual(PackageReference(package: "ssh://git@server.com/user/project.git"), PackageReference(repo: "ssh://git@server.com/user/project.git"))
         XCTAssertEqual(PackageReference(package: "ssh://git@server.com/user/project.git@0.1"), PackageReference(repo: "ssh://git@server.com/user/project.git", version: "0.1"))
+    }
+
+    func testPreparePackageDictionaryCommand() {
+        XCTAssertEqual(
+            PackageReference(
+                location: .github(repo: "yonaskolb/mint"),
+                revision: nil
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b master https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .github(repo: "yonaskolb/mint"),
+                revision: .branch("develop")
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b develop https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .github(repo: "yonaskolb/mint"),
+                revision: .tag("0.14.0")
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b 0.14.0 https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .github(repo: "yonaskolb/mint"),
+                revision: .commit("e2da821bcfad1b4d42bf77cbd64591406ef62b90")
+            ).preparePackageDictionaryCommand(),
+            "git clone https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint ; cd github.com_yonaskolb_mint ; git checkout e2da821bcfad1b4d42bf77cbd64591406ef62b90 ; cd -"
+        )
+
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "https://github.com/yonaskolb/mint.git"),
+                revision: nil
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b master https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "https://github.com/yonaskolb/mint.git"),
+                revision: .branch("develop")
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b develop https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "https://github.com/yonaskolb/mint.git"),
+                revision: .tag("0.14.0")
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b 0.14.0 https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "https://github.com/yonaskolb/mint.git"),
+                revision: .commit("e2da821bcfad1b4d42bf77cbd64591406ef62b90")
+            ).preparePackageDictionaryCommand(),
+            "git clone https://github.com/yonaskolb/mint.git github.com_yonaskolb_mint ; cd github.com_yonaskolb_mint ; git checkout e2da821bcfad1b4d42bf77cbd64591406ef62b90 ; cd -"
+        )
+
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "git@github.com/yonaskolb/mint.git"),
+                revision: nil
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b master git@github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "git@github.com/yonaskolb/mint.git"),
+                revision: .branch("develop")
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b develop git@github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "git@github.com/yonaskolb/mint.git"),
+                revision: .tag("0.14.0")
+            ).preparePackageDictionaryCommand(),
+            "git clone --depth 1 -b 0.14.0 git@github.com/yonaskolb/mint.git github.com_yonaskolb_mint"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .git(location: "git@github.com/yonaskolb/mint.git"),
+                revision: .commit("e2da821bcfad1b4d42bf77cbd64591406ef62b90")
+            ).preparePackageDictionaryCommand(),
+            "git clone git@github.com/yonaskolb/mint.git github.com_yonaskolb_mint ; cd github.com_yonaskolb_mint ; git checkout e2da821bcfad1b4d42bf77cbd64591406ef62b90 ; cd -"
+        )
+
+        XCTAssertEqual(
+            PackageReference(
+                location: .localGit(absolutePath: "/path/to/repository"),
+                revision: nil
+            ).preparePackageDictionaryCommand(),
+            "git clone -b master -l /path/to/repository _path_to_repository"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .localGit(absolutePath: "/path/to/repository"),
+                revision: .branch("develop")
+            ).preparePackageDictionaryCommand(),
+            "git clone -b develop -l /path/to/repository _path_to_repository"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .localGit(absolutePath: "/path/to/repository"),
+                revision: .tag("0.14.0")
+            ).preparePackageDictionaryCommand(),
+            "git clone -b 0.14.0 -l /path/to/repository _path_to_repository"
+        )
+        XCTAssertEqual(
+            PackageReference(
+                location: .localGit(absolutePath: "/path/to/repository"),
+                revision: .commit("e2da821bcfad1b4d42bf77cbd64591406ef62b90")
+            ).preparePackageDictionaryCommand(),
+            "git clone -l /path/to/repository _path_to_repository ; cd _path_to_repository ; git checkout e2da821bcfad1b4d42bf77cbd64591406ef62b90 ; cd -"
+        )
+
+        XCTAssertEqual(
+            PackageReference(
+                location: .localPackage(absolutePath: "/path/to/package"),
+                revision: nil
+            ).preparePackageDictionaryCommand(),
+            "cp -r /path/to/package _path_to_package"
+        )
     }
 
     func testPackageVersions() {

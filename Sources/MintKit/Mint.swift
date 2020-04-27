@@ -73,7 +73,7 @@ public class Mint {
         try writeMetadata(metadata)
     }
 
-    func getGitRepos(name: String) throws -> [String] {
+    func getLocations(name: String) throws -> [String] {
         let metadata = try readMetadata()
 
         let gitRepos = metadata.packages
@@ -121,12 +121,19 @@ public class Mint {
 
         // resolve version from MintFile
         if package.version.isEmpty,
-            mintFilePath.exists,
-            let mintfile = try? Mintfile(path: mintFilePath) {
+            mintFilePath.exists {
+            let mintfile: MintfileProtocol
+
+            if path.extension == "yml" {
+                mintfile = try MintfileYAML(path: mintFilePath)
+            } else {
+                mintfile = try Mintfile(path: mintFilePath)
+            }
+
             // set version to version from mintfile
             if let mintFilePackage = mintfile.package(for: package.repo), !mintFilePackage.version.isEmpty {
-                package.version = mintFilePackage.version
-                package.repo = mintFilePackage.repo
+                package.location = mintFilePackage.location
+                package.revision = mintFilePackage.revision
                 if verbose {
                     output("Using \(package.repo) \(package.version) from Mintfile.")
                 }
@@ -136,24 +143,36 @@ public class Mint {
         // resolve repo from installed packages
         if !package.repo.contains("/") {
             // repo reference by name. Get the full git repo
-            let gitRepos = try getGitRepos(name: package.repo)
+            let locations = try getLocations(name: package.repo)
 
-            let gitRepo: String
-            switch gitRepos.count {
+            let locationString: String
+            switch locations.count {
             case 0:
                 throw MintError.packageNotFound(package.repo)
 
             case 1:
-                gitRepo = gitRepos[0]
+                locationString = locations[0]
 
             default:
-                gitRepo = Input.readOption(options: gitRepos, prompt: "There are multiple git repositories matching '\(package.repo)', which one would you like to use?")
+                locationString = Input.readOption(options: locations, prompt: "There are multiple git repositories matching '\(package.repo)', which one would you like to use?")
             }
-            package.repo = gitRepo
+
+            let location: PackageReference.Location
+            if locationString.starts(with: "/") {
+                let locationPath = Path(locationString)
+                if try locationPath.children().contains(Path(".git")) {
+                    location = .localGit(absolutePath: locationString)
+                } else {
+                    location = .localPackage(absolutePath: locationString)
+                }
+            } else {
+                location = .legacyStyle(locationString)
+            }
+            package.location = location
         }
 
         // resolve latest version from git repo
-        if package.version.isEmpty {
+        if package.location.isGitRepository && package.version.isEmpty {
             // we don't have a specific version, let's get the latest tag
             output("Finding latest version of \(package.name)")
             do {
@@ -161,14 +180,14 @@ public class Mint {
 
                 let tagReferences = tagOutput.stdout
                 if tagReferences.isEmpty {
-                    package.version = "master"
+                    package.revision = .branch("master")
                 } else {
                     let tags = tagReferences.split(separator: "\n").map { String($0.split(separator: "\t").last!.split(separator: "/").last!) }
                     let versions = convertTagsToVersionMap(tags)
                     if let latestVersion = versions.keys.sorted().last, let tag = versions[latestVersion] {
-                        package.version = tag
+                        package.revision = .tag(tag)
                     } else {
-                        package.version = "master"
+                        package.revision = .branch("master")
                     }
                 }
             } catch {
@@ -288,14 +307,7 @@ public class Mint {
 
         try? packageCheckoutPath.delete()
 
-        let cloneCommand: String
-
-        if package.versionCouldBeSHA {
-            // version is maybe a SHA, so we can't do a shallow clone
-            cloneCommand = "git clone \(package.gitPath) \(package.repoPath) && cd \(package.repoPath) && git checkout \(package.version)"
-        } else {
-            cloneCommand = "git clone --depth 1 -b \(package.version) \(package.gitPath) \(package.repoPath)"
-        }
+        let cloneCommand = package.preparePackageDictionaryCommand()
         try runPackageCommand(name: "Cloning \(package.namedVersion)",
                               command: cloneCommand,
                               directory: checkoutPath,
@@ -362,7 +374,7 @@ public class Mint {
             }
         }
 
-        try addPackage(git: package.gitPath, path: packagePath.packagePath)
+        try addPackage(git: package.location.string, path: packagePath.packagePath)
 
         output("Installed \(package.name) \(package.version)".green)
         try? packageCheckoutPath.delete()
@@ -439,7 +451,13 @@ public class Mint {
 
     public func bootstrap(link: Bool = false) throws {
 
-        let mintFile = try Mintfile(path: mintFilePath)
+        let mintFile: MintfileProtocol
+
+        if mintFilePath.extension == "yml" {
+            mintFile = try MintfileYAML(path: mintFilePath)
+        } else {
+            mintFile = try Mintfile(path: mintFilePath)
+        }
 
         guard !mintFile.packages.isEmpty else {
             standardOut <<< "🌱  Mintfile is empty"

@@ -12,6 +12,10 @@ public enum MintError: Error, CustomStringConvertible, Equatable, LocalizedError
     case packageBuildError(PackageReference)
     case packageReadError(String)
     case packageNotInstalled(PackageReference)
+    case locationDuplicated([String: Any])
+    case revisionDuplicated(PackageReference.Location, [String])
+    case localPackageNeverHaveRevisionSpecifier(PackageReference.Location, [String])
+    case locationSpecifierNotFound([String: Any])
     case inconsistentCache(String)
 
     public var description: String {
@@ -26,6 +30,10 @@ public enum MintError: Error, CustomStringConvertible, Equatable, LocalizedError
         case let .packageBuildError(package): return "Failed to build \(package.namedVersion) with SPM"
         case let .packageReadError(error): return "Failed to read Package.swift file:\n\(error)"
         case let .packageNotInstalled(package): return "\(package.namedVersion) not installed"
+        case let .revisionDuplicated(location, duplicatedParameters): return "\(location) has more than one revision specifier. (\(duplicatedParameters.sorted().joined(separator: ", ")))"
+        case let .localPackageNeverHaveRevisionSpecifier(location, revisionSpecifiers): return "Local package \(location) cannot have revision specifier. (\(revisionSpecifiers.sorted().joined(separator: ", ")))"
+        case let .locationSpecifierNotFound(yamlEntry): return "No location specifier found. package info: \(yamlEntry)"
+        case let .locationDuplicated(_): return "There is a package that has more than one location specifier."
         case let .inconsistentCache(error): return "Inconsistent cache, clear it up.\nError: \(error)"
         }
     }
